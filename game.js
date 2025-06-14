@@ -566,17 +566,82 @@ function clearCanvas() {
 
 // Draw background
 function drawBackground() {
-    // Sky gradient
-    const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-    gradient.addColorStop(0, '#87CEEB'); // Light blue
-    gradient.addColorStop(1, '#98FB98'); // Light green
+    // Blue sky gradient
+    const skyGradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT - 100);
+    skyGradient.addColorStop(0, '#87CEEB'); // Sky blue at top
+    skyGradient.addColorStop(1, '#B0E0E6'); // Powder blue at bottom
     
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.fillStyle = skyGradient;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT - 100);
     
-    // Ground
-    ctx.fillStyle = '#8FBC8F';
-    ctx.fillRect(0, CANVAS_HEIGHT - 50, CANVAS_WIDTH, 50);
+    // Draw scattered white clouds
+    drawClouds();
+    
+    // Soft brown ground
+    const groundGradient = ctx.createLinearGradient(0, CANVAS_HEIGHT - 100, 0, CANVAS_HEIGHT);
+    groundGradient.addColorStop(0, '#DEB887'); // Burlywood
+    groundGradient.addColorStop(1, '#D2B48C'); // Tan - softer brown
+    
+    ctx.fillStyle = groundGradient;
+    ctx.fillRect(0, CANVAS_HEIGHT - 100, CANVAS_WIDTH, 100);
+}
+
+// Draw scattered clouds in the sky
+function drawClouds() {
+    // Cloud positions - positioned away from capybara square (top-left area)
+    const clouds = [
+        { x: 400, y: 70, size: 0.8, type: 'medium' },
+        { x: 600, y: 50, size: 1.0, type: 'large' },
+        { x: 750, y: 90, size: 0.7, type: 'small' },
+        { x: 500, y: 130, size: 0.9, type: 'medium' },
+        { x: 300, y: 45, size: 0.6, type: 'small' }
+    ];
+    
+    clouds.forEach(cloud => {
+        drawSingleCloud(cloud.x, cloud.y, cloud.size, cloud.type);
+    });
+}
+
+// Draw a single fluffy cloud with improved appearance
+function drawSingleCloud(x, y, scale = 1, type = 'medium') {
+    ctx.save();
+    
+    // Set cloud color - solid white to avoid artifacts
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    
+    // Draw each circle individually to avoid triangle artifacts
+    if (type === 'large') {
+        // Large fluffy cloud - draw each circle separately
+        drawCloudCircle(x, y, 30 * scale);
+        drawCloudCircle(x + 35 * scale, y, 25 * scale);
+        drawCloudCircle(x + 60 * scale, y, 28 * scale);
+        drawCloudCircle(x + 85 * scale, y, 22 * scale);
+        drawCloudCircle(x + 20 * scale, y - 20 * scale, 25 * scale);
+        drawCloudCircle(x + 45 * scale, y - 25 * scale, 30 * scale);
+        drawCloudCircle(x + 70 * scale, y - 20 * scale, 24 * scale);
+    } else if (type === 'medium') {
+        // Medium cloud
+        drawCloudCircle(x, y, 25 * scale);
+        drawCloudCircle(x + 30 * scale, y, 20 * scale);
+        drawCloudCircle(x + 50 * scale, y, 23 * scale);
+        drawCloudCircle(x + 15 * scale, y - 18 * scale, 20 * scale);
+        drawCloudCircle(x + 35 * scale, y - 20 * scale, 25 * scale);
+    } else {
+        // Small cloud
+        drawCloudCircle(x, y, 20 * scale);
+        drawCloudCircle(x + 25 * scale, y, 18 * scale);
+        drawCloudCircle(x + 12 * scale, y - 15 * scale, 18 * scale);
+        drawCloudCircle(x + 30 * scale, y - 12 * scale, 15 * scale);
+    }
+    
+    ctx.restore();
+}
+
+// Helper function to draw individual cloud circles
+function drawCloudCircle(x, y, radius) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
 }
 
 // Main game loop
