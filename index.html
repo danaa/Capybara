@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basket Catching Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #87CEEB, #98FB98);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        
+        #gameContainer {
+            border: 3px solid #8B4513;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            background: #F0F8FF;
+            position: relative;
+        }
+        
+        #gameCanvas {
+            display: block;
+            cursor: none;
+        }
+        
+        #instructions {
+            color: #2F4F4F;
+            font-size: 18px;
+            font-weight: bold;
+            background: rgba(255,255,255,0.9);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            margin-top: 40px;
+            max-width: 600px;
+        }
+        
+        #capyIcon {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 180px;
+            height: 180px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.1s ease-in-out;
+        }
+        
+        #capyIcon.scared {
+            animation: scaredShake 0.1s infinite alternate;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.6), 0 4px 8px rgba(0,0,0,0.2);
+            background: rgba(255, 200, 200, 0.95);
+        }
+        
+        #capyIcon.happy {
+            animation: happyBounce 0.2s infinite alternate;
+            box-shadow: 0 0 20px rgba(255, 192, 203, 0.8), 0 4px 8px rgba(0,0,0,0.2);
+            background: rgba(255, 240, 245, 0.95);
+        }
+        
+        @keyframes scaredShake {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(2px, 1px) rotate(1deg); }
+        }
+        
+        @keyframes happyBounce {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.05); }
+        }
+        
+        .floating-heart {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            z-index: 1000;
+            animation: floatHeart 0.5s ease-out;
+            pointer-events: none;
+        }
+        
+        @keyframes floatHeart {
+            0% { 
+                opacity: 0;
+                transform: scale(0.5) translateY(10px);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1) translateY(-5px);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-20px);
+            }
+        }
+        
+        #capyIcon img {
+            width: 135px;
+            height: 135px;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="capyIcon">
+            <img id="capyImage" src="assets/capy.png" alt="Capy">
+        </div>
+    </div>
+    
+    <div id="instructions">
+        🎮 How to Play 🎮<br><br>
+        <strong>Left Mouse Button:</strong> Move Left<br>
+        <strong>Right Mouse Button:</strong> Move Right<br><br>
+        🍊 Catch oranges = +1 coin<br>
+        🦴 Avoid bones = -1 coin<br>
+        💣 Avoid bombs = -1 life
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html> 
