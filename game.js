@@ -9,9 +9,11 @@ const BASKET_SPEED = 5;
 const ORANGE_SPEED = 2;
 const BOMB_SPEED = 2.5;
 const BONE_SPEED = 2;
+const HEART_SPEED = 1.5;
 const ORANGE_SPAWN_RATE = 0.02; // Probability of spawning an orange each frame
 const BOMB_SPAWN_RATE = 0.005; // Much less frequent than oranges
 const BONE_SPAWN_RATE = 0.01; // Less frequent than oranges but more than bombs
+const HEART_SPAWN_RATE = 0.0008; // Very rare - only when missing lives
 
 // Basket object
 const basket = {
@@ -33,6 +35,7 @@ let lives = 5;
 let oranges = [];
 let bombs = [];
 let bones = [];
+let hearts = []; // Array for falling hearts
 let explosion = null;
 let gameOver = false;
 let gameOverTimer = 0;
@@ -128,6 +131,17 @@ function createBone() {
         width: 45,
         height: 45,
         speed: BONE_SPEED
+    };
+}
+
+// Create new heart
+function createHeart() {
+    return {
+        x: Math.random() * (CANVAS_WIDTH - 40), // Random x position
+        y: -40, // Start above canvas
+        width: 40,
+        height: 40,
+        speed: HEART_SPEED
     };
 }
 
@@ -311,6 +325,13 @@ function drawBones() {
     });
 }
 
+// Draw hearts
+function drawHearts() {
+    hearts.forEach(heart => {
+        ctx.drawImage(heartImage, heart.x, heart.y, heart.width, heart.height);
+    });
+}
+
 // Draw bombs with animation
 function drawBombs() {
     bombs.forEach(bomb => {
@@ -446,6 +467,7 @@ function resetGame() {
     oranges = [];
     bombs = [];
     bones = [];
+    hearts = [];
     explosion = null;
     gameOver = false;
     gameOverTimer = 0;
@@ -644,6 +666,37 @@ function drawCloudCircle(x, y, radius) {
     ctx.fill();
 }
 
+// Update hearts
+function updateHearts() {
+    // Spawn new hearts only if player is missing lives (less than 5)
+    if (lives < 5 && Math.random() < HEART_SPAWN_RATE) {
+        hearts.push(createHeart());
+    }
+    
+    // Update heart positions and check for collisions
+    for (let i = hearts.length - 1; i >= 0; i--) {
+        const heart = hearts[i];
+        heart.y += heart.speed;
+        
+        // Check collision with basket
+        if (checkCollision(heart, basket)) {
+            if (lives < 5) { // Only gain life if not at maximum
+                lives++;
+                console.log('Heart caught! Lives:', lives);
+                
+                // Make capybara happy for half a second
+                capyHappy = true;
+                capyHappyTimer = 30; // 0.5 seconds at 60fps
+            }
+            hearts.splice(i, 1); // Remove caught heart
+        }
+        // Remove hearts that fell off screen
+        else if (heart.y > CANVAS_HEIGHT) {
+            hearts.splice(i, 1);
+        }
+    }
+}
+
 // Main game loop
 function gameLoop() {
     clearCanvas();
@@ -668,6 +721,7 @@ function gameLoop() {
         updateBones();
         updateBombs();
         updateExplosion();
+        updateHearts();
         drawBasket();
         drawOranges(); // Draw oranges on top of basket
         drawBones(); // Draw bones on top of basket
@@ -675,6 +729,7 @@ function gameLoop() {
         drawExplosion(); // Draw explosion on top of everything
         drawCoins();
         drawLives();
+        drawHearts();
     }
     
     // Continue the game loop
