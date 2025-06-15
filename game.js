@@ -44,6 +44,25 @@ let capyScaredTimer = 0;
 let capyHappy = false;
 let capyHappyTimer = 0;
 
+// Timer and game progression
+let gameTimer = 3600; // 60 seconds at 60fps (60 * 60)
+let currentScreen = 'game'; // 'game' or 'feeding'
+
+// Feeding screen variables
+let feedingOranges = []; // Oranges on the feeding screen
+let draggedOrange = null; // Currently dragged orange
+let mouseX = 0;
+let mouseY = 0;
+let capybaraFeeding = {
+    x: 0,
+    y: 0,
+    width: 150,
+    height: 150,
+    mouthX: 0, // Will be calculated relative to capybara position
+    mouthY: 0,
+    mouthRadius: 40
+};
+
 // Images
 const orangeImage = new Image();
 orangeImage.src = 'assets/orange.png';
@@ -98,6 +117,63 @@ canvas.addEventListener('contextmenu', function(e) {
 canvas.addEventListener('mouseleave', function() {
     leftMousePressed = false;
     rightMousePressed = false;
+});
+
+// Mouse move tracking for feeding screen
+canvas.addEventListener('mousemove', function(e) {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+    
+    // Update dragged orange position
+    if (draggedOrange && currentScreen === 'feeding') {
+        draggedOrange.x = mouseX - draggedOrange.width / 2;
+        draggedOrange.y = mouseY - draggedOrange.height / 2;
+    }
+});
+
+// Mouse down for feeding screen - start dragging
+canvas.addEventListener('mousedown', function(e) {
+    if (currentScreen === 'feeding' && e.button === 0) { // Left click only
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+        
+        // Check if clicking on an orange
+        for (let i = feedingOranges.length - 1; i >= 0; i--) {
+            const orange = feedingOranges[i];
+            if (clickX >= orange.x && clickX <= orange.x + orange.width &&
+                clickY >= orange.y && clickY <= orange.y + orange.height) {
+                draggedOrange = orange;
+                break;
+            }
+        }
+    }
+});
+
+// Mouse up for feeding screen - stop dragging and check feeding
+canvas.addEventListener('mouseup', function(e) {
+    if (currentScreen === 'feeding' && draggedOrange && e.button === 0) {
+        // Check if orange is near capybara's mouth
+        const distance = Math.sqrt(
+            Math.pow(draggedOrange.x + draggedOrange.width/2 - capybaraFeeding.mouthX, 2) +
+            Math.pow(draggedOrange.y + draggedOrange.height/2 - capybaraFeeding.mouthY, 2)
+        );
+        
+        if (distance < capybaraFeeding.mouthRadius) {
+            // Feed the capybara!
+            feedingOranges = feedingOranges.filter(o => o !== draggedOrange);
+            coins = Math.max(0, coins - 1); // Remove one orange from count
+            
+            // Make capybara happy
+            capyHappy = true;
+            capyHappyTimer = 60; // 1 second
+            
+            console.log('Capybara fed! Remaining oranges:', coins);
+        }
+        
+        draggedOrange = null;
+    }
 });
 
 // Create new orange
@@ -395,6 +471,27 @@ function drawCoins() {
     ctx.fillText(coinText, CANVAS_WIDTH - textWidth - 20, 40);
 }
 
+// Draw timer
+function drawTimer() {
+    const minutes = Math.floor(gameTimer / 3600);
+    const seconds = Math.floor((gameTimer % 3600) / 60);
+    const timeText = `Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 24px Arial';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    
+    // Center the timer text
+    const textWidth = ctx.measureText(timeText).width;
+    const textX = (CANVAS_WIDTH - textWidth) / 2;
+    
+    // Draw text outline
+    ctx.strokeText(timeText, textX, 40);
+    // Draw text fill
+    ctx.fillText(timeText, textX, 40);
+}
+
 // Create floating hearts around capybara
 function createFloatingHearts() {
     const capyIcon = document.getElementById('capyIcon');
@@ -475,6 +572,15 @@ function resetGame() {
     capyScaredTimer = 0;
     capyHappy = false;
     capyHappyTimer = 0;
+    gameTimer = 3600; // Reset timer to 60 seconds
+    currentScreen = 'game'; // Reset to game screen
+    
+    // Reset feeding screen variables
+    feedingOranges = [];
+    draggedOrange = null;
+    
+    // Reset UI elements
+    resetGameScreenUI();
     
     // Reset capy image and effects
     const capyImage = document.getElementById('capyImage');
@@ -666,6 +772,185 @@ function drawCloudCircle(x, y, radius) {
     ctx.fill();
 }
 
+// Draw feeding screen
+function drawFeedingScreen() {
+    // Set cute cursor and hide UI elements
+    setupFeedingScreenUI();
+    
+    // Clear canvas with a nice indoor background
+    ctx.fillStyle = '#F5F5DC'; // Beige background
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    
+    // Initialize feeding oranges if not done
+    if (feedingOranges.length === 0 && coins > 0) {
+        initializeFeedingOranges();
+    }
+    
+    // Draw simple table
+    drawTable();
+    
+    // Draw basket on table with oranges
+    drawBasketWithOranges();
+    
+    // Draw capybara
+    drawCapybaraFeeding();
+    
+    // Draw success message
+    drawSuccessMessage();
+}
+
+// Setup UI for feeding screen
+function setupFeedingScreenUI() {
+    // Set cute cursor
+    canvas.style.cursor = 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'32\' height=\'32\' viewBox=\'0 0 32 32\'><circle cx=\'16\' cy=\'16\' r=\'12\' fill=\'%23FFB6C1\' stroke=\'%23FF69B4\' stroke-width=\'2\'/><circle cx=\'12\' cy=\'12\' r=\'2\' fill=\'%23FF1493\'/><circle cx=\'20\' cy=\'12\' r=\'2\' fill=\'%23FF1493\'/><path d=\'M 12 20 Q 16 24 20 20\' stroke=\'%23FF1493\' stroke-width=\'2\' fill=\'none\'/></svg>") 16 16, auto';
+    
+    // Hide capybara UI elements
+    const capyIcon = document.getElementById('capyIcon');
+    if (capyIcon) {
+        capyIcon.style.display = 'none';
+    }
+}
+
+// Reset UI for game screen
+function resetGameScreenUI() {
+    // Reset cursor
+    canvas.style.cursor = 'default';
+    
+    // Show capybara UI elements
+    const capyIcon = document.getElementById('capyIcon');
+    if (capyIcon) {
+        capyIcon.style.display = 'block';
+    }
+}
+
+// Draw table
+function drawTable() {
+    // Table top
+    ctx.fillStyle = '#8B4513'; // Brown
+    ctx.fillRect(CANVAS_WIDTH / 2 - 200, CANVAS_HEIGHT / 2 + 50, 400, 20);
+    
+    // Table legs
+    ctx.fillStyle = '#654321'; // Darker brown
+    // Left legs
+    ctx.fillRect(CANVAS_WIDTH / 2 - 180, CANVAS_HEIGHT / 2 + 70, 15, 100);
+    ctx.fillRect(CANVAS_WIDTH / 2 - 180, CANVAS_HEIGHT / 2 + 70, 15, 100);
+    // Right legs  
+    ctx.fillRect(CANVAS_WIDTH / 2 + 165, CANVAS_HEIGHT / 2 + 70, 15, 100);
+    ctx.fillRect(CANVAS_WIDTH / 2 + 165, CANVAS_HEIGHT / 2 + 70, 15, 100);
+}
+
+// Initialize feeding oranges when entering feeding screen
+function initializeFeedingOranges() {
+    feedingOranges = [];
+    const tableY = CANVAS_HEIGHT / 2 + 50;
+    const basketX = CANVAS_WIDTH / 2 - 75;
+    const basketY = tableY - 90; // Fixed gap - basket sits properly on table
+    
+    // Create orange objects for dragging
+    const numOranges = Math.min(coins, 12);
+    for (let i = 0; i < numOranges; i++) {
+        const angle = (i / numOranges) * Math.PI * 2;
+        const radius = 30 + (i % 3) * 15;
+        feedingOranges.push({
+            x: basketX + 75 + Math.cos(angle) * radius - 20,
+            y: basketY + 60 + Math.sin(angle) * radius * 0.5 - 20,
+            width: 40,
+            height: 40,
+            originalX: basketX + 75 + Math.cos(angle) * radius - 20,
+            originalY: basketY + 60 + Math.sin(angle) * radius * 0.5 - 20
+        });
+    }
+    
+    // Position capybara near the table
+    capybaraFeeding.x = CANVAS_WIDTH / 2 + 200; // Right side of table
+    capybaraFeeding.y = CANVAS_HEIGHT / 2 - 50; // Level with table
+    capybaraFeeding.mouthX = capybaraFeeding.x + 40; // Approximate mouth position
+    capybaraFeeding.mouthY = capybaraFeeding.y + 50;
+}
+
+// Draw basket with oranges on table
+function drawBasketWithOranges() {
+    const tableY = CANVAS_HEIGHT / 2 + 50;
+    const basketX = CANVAS_WIDTH / 2 - 75; // Center the basket
+    const basketY = tableY - 90; // Fixed gap - basket sits properly on table
+    
+    // Draw the basket
+    ctx.drawImage(basket.image, basketX, basketY, 150, 90);
+    
+    // Draw oranges (from feedingOranges array for dragging)
+    feedingOranges.forEach(orange => {
+        // Highlight dragged orange
+        if (orange === draggedOrange) {
+            ctx.save();
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 10;
+        }
+        
+        ctx.drawImage(orangeImage, orange.x, orange.y, orange.width, orange.height);
+        
+        if (orange === draggedOrange) {
+            ctx.restore();
+        }
+    });
+}
+
+// Draw capybara on feeding screen
+function drawCapybaraFeeding() {
+    // Always update capy image state
+    updateCapyImage();
+    
+    // Get current capybara image
+    const capyImage = document.getElementById('capyImage');
+    if (capyImage && capyImage.complete) {
+        ctx.drawImage(capyImage, capybaraFeeding.x, capybaraFeeding.y, capybaraFeeding.width, capybaraFeeding.height);
+        
+        // Draw mouth area indicator (invisible circle for debugging - can remove later)
+        if (draggedOrange) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(capybaraFeeding.mouthX, capybaraFeeding.mouthY, capybaraFeeding.mouthRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+}
+
+// Draw success message
+function drawSuccessMessage() {
+    ctx.fillStyle = '#228B22'; // Forest green
+    ctx.font = 'bold 48px Arial';
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 3;
+    
+    const successText = 'Level Complete!';
+    const textWidth = ctx.measureText(successText).width;
+    const textX = (CANVAS_WIDTH - textWidth) / 2;
+    const textY = 100;
+    
+    // Draw text outline
+    ctx.strokeText(successText, textX, textY);
+    // Draw text fill
+    ctx.fillText(successText, textX, textY);
+    
+    // Draw coins collected
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 32px Arial';
+    ctx.strokeStyle = '#8B4513';
+    ctx.lineWidth = 2;
+    
+    const coinsText = `Oranges Collected: ${coins}`;
+    const coinsWidth = ctx.measureText(coinsText).width;
+    const coinsX = (CANVAS_WIDTH - coinsWidth) / 2;
+    const coinsY = 160;
+    
+    // Draw coins text outline
+    ctx.strokeText(coinsText, coinsX, coinsY);
+    // Draw coins text fill
+    ctx.fillText(coinsText, coinsX, coinsY);
+}
+
 // Update hearts
 function updateHearts() {
     // Spawn new hearts only if player is missing lives (less than 5)
@@ -699,37 +984,57 @@ function updateHearts() {
 
 // Main game loop
 function gameLoop() {
-    clearCanvas();
-    drawBackground();
-    
-    // Always update capy image (even during game over)
-    updateCapyImage();
-    
-    if (gameOver) {
-        // Handle game over state
-        gameOverTimer--;
-        drawGameOver();
+    if (currentScreen === 'game') {
+        // Ensure game screen UI is set up
+        resetGameScreenUI();
         
-        // Reset game after timer expires
-        if (gameOverTimer <= 0) {
-            resetGame();
+        clearCanvas();
+        drawBackground();
+        
+        // Always update capy image (even during game over)
+        updateCapyImage();
+        
+        if (gameOver) {
+            // Handle game over state
+            gameOverTimer--;
+            drawGameOver();
+            
+            // Reset game after timer expires
+            if (gameOverTimer <= 0) {
+                resetGame();
+            }
+        } else {
+            // Update timer
+            if (gameTimer > 0) {
+                gameTimer--;
+                
+                // Check if time is up and player still has lives
+                if (gameTimer <= 0 && lives > 0) {
+                    currentScreen = 'feeding';
+                    console.log('Time up! Moving to feeding screen with', coins, 'oranges');
+                }
+            }
+            
+            // Normal game update
+            updateBasket();
+            updateOranges();
+            updateBones();
+            updateBombs();
+            updateExplosion();
+            updateHearts();
+            drawBasket();
+            drawOranges(); // Draw oranges on top of basket
+            drawBones(); // Draw bones on top of basket
+            drawBombs(); // Draw bombs on top of basket
+            drawExplosion(); // Draw explosion on top of everything
+            drawCoins();
+            drawLives();
+            drawHearts();
+            drawTimer(); // Draw the timer
         }
-    } else {
-        // Normal game update
-        updateBasket();
-        updateOranges();
-        updateBones();
-        updateBombs();
-        updateExplosion();
-        updateHearts();
-        drawBasket();
-        drawOranges(); // Draw oranges on top of basket
-        drawBones(); // Draw bones on top of basket
-        drawBombs(); // Draw bombs on top of basket
-        drawExplosion(); // Draw explosion on top of everything
-        drawCoins();
-        drawLives();
-        drawHearts();
+    } else if (currentScreen === 'feeding') {
+        // Draw feeding screen
+        drawFeedingScreen();
     }
     
     // Continue the game loop
